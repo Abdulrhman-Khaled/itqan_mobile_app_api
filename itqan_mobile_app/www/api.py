@@ -261,7 +261,7 @@ def get_exchange_rate(from_currency, to_currency, transaction_date = None):
 
 
 @frappe.whitelist()
-def get_payment_party_details(company, party_type, party, date, cost_center=None):
+def get_payment_party_details(party_type, party, date, company=None, cost_center=None):
     from erpnext.accounts.doctype.payment_entry.payment_entry import get_party_details
 
     return get_party_details(company, party_type, party, date, cost_center)
