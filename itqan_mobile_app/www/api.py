@@ -176,6 +176,12 @@ def update_sales_invoice(args):
     return {"error": 0, "status": 1}
 
 @frappe.whitelist()
+def get_default_company():
+    return {
+        "company": frappe.db.get_single_value("Global Defaults", "default_company")
+    }
+
+@frappe.whitelist()
 def get_sales_invoices_list(filters=None):
     return frappe.db.get_list("Sales Invoice", filters=filters, fields="name")
 
