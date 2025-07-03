@@ -17,6 +17,12 @@ def flatten(lis):
         else:        
             yield item
 
+@frappe.whitelist(allow_guest=True)
+def get_user(user):
+    doc = frappe.get_doc("User", user)
+    return {"user": doc, "type": "user"}
+
+
 @frappe.whitelist()
 def get_items_list(filters=None):
     return frappe.db.get_list("Item", filters=filters, fields="name")
