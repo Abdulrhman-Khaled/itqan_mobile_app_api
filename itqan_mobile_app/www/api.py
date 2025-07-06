@@ -378,8 +378,27 @@ def get_projects_list(filters=None):
     return frappe.db.get_list("Project", filters=filters, fields="name")
 
 @frappe.whitelist()
-def get_mode_of_payments_list(filters=None):
-    return frappe.db.get_list("Mode of Payment", filters=filters, fields="name")
+def get_mode_of_payments_list(company, filters=None):
+    modes = frappe.get_all("Mode of Payment", filters=filters, fields=["name"])
+    result = []
+
+    for mode in modes:
+        account = frappe.get_value(
+            "Mode of Payment Account",
+            filters={
+                "parent": mode.name,
+                "company": company
+            },
+            fieldname="default_account"
+        )
+
+        result.append({
+            "name": mode.name,
+            "account": account
+        })
+
+    return result
+
 
 @frappe.whitelist()
 def get_employees_list(filters=None):
