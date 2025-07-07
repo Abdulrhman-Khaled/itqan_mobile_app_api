@@ -461,3 +461,80 @@ def get_payment_terms_list(filters=None):
 def get_terms_and_conditions_list(filters=None):
     return frappe.db.get_list("Terms and Conditions", filters=filters, fields="name")
 
+@frappe.whitelist()
+def create_customer(customer_name, phone, address_line1):
+    try:
+        # Create Customer
+        customer = frappe.get_doc({
+            "doctype": "Customer",
+            "customer_name": customer_name,
+            "customer_type": "Individual",
+            "mobile_no": phone
+        })
+        customer.insert(ignore_permissions=True)
+
+        # Create Address
+        address = frappe.get_doc({
+            "doctype": "Address",
+            "address_title": customer_name,
+            "address_type": "Billing",
+            "address_line1": address_line1,
+            "links": [{
+                "link_doctype": "Customer",
+                "link_name": customer.name
+            }]
+        })
+        address.insert(ignore_permissions=True)
+
+        return {
+            "status": "success",
+            "customer_name": customer.name,
+            "customer_id": customer.name
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Customer Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+@frappe.whitelist()
+def get_all_customers():
+    try:
+        customers = frappe.get_all(
+            "Customer",
+            fields=["name", "customer_name", "mobile_no"],
+            order_by="creation desc"
+        )
+
+        result = []
+        for cust in customers:
+            address = frappe.db.sql("""
+                SELECT addr.address_line1
+                FROM `tabAddress` addr
+                JOIN `tabDynamic Link` dl ON dl.parent = addr.name
+                WHERE dl.link_doctype = 'Customer' AND dl.link_name = %s
+                LIMIT 1
+            """, cust.name, as_dict=True)
+
+            result.append({
+                "customer_id": cust.name,
+                "customer_name": cust.customer_name,
+                "phone": cust.mobile_no,
+                "address_line1": address[0].address_line1 if address else None
+            })
+
+        return {
+            "status": "success",
+            "customers": result
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get All Customers Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
