@@ -464,16 +464,32 @@ def get_terms_and_conditions_list(filters=None):
 @frappe.whitelist()
 def create_customer(customer_name, phone, address_line1):
     try:
-        # Create Customer
+        # Get first available Customer Group
+        customer_group = frappe.get_value("Customer Group", {}, "name", order_by="creation asc")
+        if not customer_group:
+            return {
+                "status": "error",
+                "message": "No Customer Group found in the system."
+            }
+
+        # Get first available Territory
+        territory = frappe.get_value("Territory", {}, "name", order_by="creation asc")
+        if not territory:
+            return {
+                "status": "error",
+                "message": "No Territory found in the system."
+            }
+
         customer = frappe.get_doc({
             "doctype": "Customer",
             "customer_name": customer_name,
             "customer_type": "Individual",
-            "mobile_no": phone
+            "mobile_no": phone,
+            "customer_group": customer_group,
+            "territory": territory
         })
         customer.insert(ignore_permissions=True)
 
-        # Create Address
         address = frappe.get_doc({
             "doctype": "Address",
             "address_title": customer_name,
@@ -488,12 +504,12 @@ def create_customer(customer_name, phone, address_line1):
 
         return {
             "status": "success",
-            "customer_name": customer.name,
-            "customer_id": customer.name
+            "customer_id": customer.name,
+            "customer_name": customer.customer_name
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Create Customer Error")
+        frappe.log_error(frappe.get_traceback(), "Create Customer API Error")
         return {
             "status": "error",
             "message": str(e)
