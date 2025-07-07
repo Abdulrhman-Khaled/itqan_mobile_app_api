@@ -465,20 +465,8 @@ def get_terms_and_conditions_list(filters=None):
 def create_customer(customer_name, phone, address_line1):
     try:
         # Get first available Customer Group
-        customer_group = frappe.get_value("Customer Group", {}, "name", order_by="creation asc")
-        if not customer_group:
-            return {
-                "status": "error",
-                "message": "No Customer Group found in the system."
-            }
-
-        # Get first available Territory
-        territory = frappe.get_value("Territory", {}, "name", order_by="creation asc")
-        if not territory:
-            return {
-                "status": "error",
-                "message": "No Territory found in the system."
-            }
+        customer_group = "none"
+        territory = "none"
 
         customer = frappe.get_doc({
             "doctype": "Customer",
