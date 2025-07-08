@@ -22,11 +22,9 @@ def get_user(user):
     doc = frappe.get_doc("User", user)
     return {"user": doc, "type": "user"}
 
-
 @frappe.whitelist()
 def get_items_list(filters=None):
     return frappe.db.get_list("Item", filters=filters, fields="name")
-
 
 @frappe.whitelist()
 def create_payment(args):
@@ -106,7 +104,6 @@ def get_payment_entries_list(filters=None):
 @frappe.whitelist()
 def get_payment_entry(payment_entry):
     return frappe.get_all("Payment Entry", filters={"name": payment_entry}, fields=["*"])
-
 
 @frappe.whitelist()
 def create_sales_invoice(args):
@@ -264,13 +261,11 @@ def get_purchase_invoices_list(filters=None):
 def get_purchase_invoice(purchase_invoice):
     return frappe.get_all("Purchase Invoice", filters={"name": purchase_invoice}, fields=["*"])
 
-
 @frappe.whitelist()
 def get_exchange_rate(from_currency, to_currency, transaction_date = None):
     from erpnext.setup.utils import get_exchange_rate
 
     return get_exchange_rate(from_currency, to_currency, transaction_date)
-
 
 @frappe.whitelist()
 def get_payment_party_details(party_type, party, date, company=None, cost_center=None):
@@ -369,15 +364,6 @@ def get_accounts_list(filters=None):
     return frappe.db.get_list("Account", filters=filters, fields="name")
 
 @frappe.whitelist()
-def get_cost_centers_list(filters=None):
-    return frappe.db.get_list("Cost Center", filters=filters, fields="name")
-
-
-@frappe.whitelist()
-def get_projects_list(filters=None):
-    return frappe.db.get_list("Project", filters=filters, fields="name")
-
-@frappe.whitelist()
 def get_mode_of_payments_list(company, filters=None):
     modes = frappe.get_all("Mode of Payment", filters=filters, fields=["name"])
     result = []
@@ -398,7 +384,6 @@ def get_mode_of_payments_list(company, filters=None):
         })
 
     return result
-
 
 @frappe.whitelist()
 def get_employees_list(filters=None):
@@ -440,7 +425,6 @@ def get_sales_taxes_templates_list(filters=None):
 def get_purchase_taxes_templates_list(filters=None):
     return frappe.db.get_list("Purchase Taxes and Charges Template", filters=filters, fields="name")
 
-
 @frappe.whitelist()
 def get_addresses_list(filters=None):
     return frappe.db.get_list("Address", filters=filters, fields="name")
@@ -461,9 +445,19 @@ def get_payment_terms_list(filters=None):
 def get_terms_and_conditions_list(filters=None):
     return frappe.db.get_list("Terms and Conditions", filters=filters, fields="name")
 
-import frappe
-
 @frappe.whitelist(allow_guest=True)
+def get_tax_templates():
+    return frappe.get_all("Sales Taxes and Charges Template", fields="*")
+
+@frappe.whitelist()
+def get_cost_centers_list(filters=None):
+    return frappe.db.get_list("Cost Center", filters=filters, fields="name")
+
+@frappe.whitelist()
+def get_projects_list(filters=None):
+    return frappe.db.get_list("Project", filters=filters, fields="name")
+
+@frappe.whitelist()
 def get_default_country():
     try:
         default_country = frappe.db.get_single_value("System Settings", "country")
@@ -477,6 +471,10 @@ def get_default_country():
             "status": "error",
             "message": str(e)
         }
+
+@frappe.whitelist()
+def get_warehouses():
+    return frappe.get_all("Warehouse", fields="name")
 
 @frappe.whitelist()
 def create_customer(customer_name, phone, address_line1, city=None, country=None):
@@ -552,7 +550,7 @@ def get_all_customers():
         result = []
         for cust in customers:
             address = frappe.db.sql("""
-                SELECT addr.address_line1
+                SELECT addr.address_line1, addr.city, addr.country
                 FROM `tabAddress` addr
                 JOIN `tabDynamic Link` dl ON dl.parent = addr.name
                 WHERE dl.link_doctype = 'Customer' AND dl.link_name = %s
@@ -563,7 +561,9 @@ def get_all_customers():
                 "customer_id": cust.name,
                 "customer_name": cust.customer_name,
                 "phone": cust.mobile_no,
-                "address_line1": address[0].address_line1 if address else None
+                "address_line1": address[0].address_line1 if address else None,
+                "city": address[0].city if address else None,
+                "country": address[0].country if address else None
             })
 
         return {
@@ -578,4 +578,7 @@ def get_all_customers():
             "message": str(e)
         }
 
+@frappe.whitelist()
+def get_items_details_list(filters=None):
+    return frappe.db.get_list("Item", filters=filters, fields="*")
 
