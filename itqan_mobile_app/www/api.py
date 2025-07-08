@@ -461,13 +461,47 @@ def get_payment_terms_list(filters=None):
 def get_terms_and_conditions_list(filters=None):
     return frappe.db.get_list("Terms and Conditions", filters=filters, fields="name")
 
+import frappe
+
+@frappe.whitelist(allow_guest=True)
+def get_default_country():
+    try:
+        default_country = frappe.db.get_single_value("System Settings", "country")
+        return {
+            "status": "success",
+            "default_country": default_country
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Default Country Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
 @frappe.whitelist()
-def create_customer(customer_name, phone, address_line1):
+def create_customer(customer_name, phone, address_line1, city=None, country=None):
     try:
         # Get first available Customer Group
-        customer_group = "none"
-        territory = "none"
+        customer_group = frappe.get_value("Customer Group", {}, "name", order_by="creation asc")
+        if not customer_group:
+            return {
+                "status": "error",
+                "message": "No Customer Group found in the system."
+            }
 
+        # Get first available Territory
+        territory = frappe.get_value("Territory", {}, "name", order_by="creation asc")
+        if not territory:
+            return {
+                "status": "error",
+                "message": "No Territory found in the system."
+            }
+
+        # If no country passed, use default from System Settings
+        if not country:
+            country = frappe.db.get_single_value("System Settings", "country")
+
+        # Create the Customer
         customer = frappe.get_doc({
             "doctype": "Customer",
             "customer_name": customer_name,
@@ -478,11 +512,14 @@ def create_customer(customer_name, phone, address_line1):
         })
         customer.insert(ignore_permissions=True)
 
+        # Create Address
         address = frappe.get_doc({
             "doctype": "Address",
             "address_title": customer_name,
             "address_type": "Billing",
             "address_line1": address_line1,
+            "city": city,
+            "country": country,
             "links": [{
                 "link_doctype": "Customer",
                 "link_name": customer.name
