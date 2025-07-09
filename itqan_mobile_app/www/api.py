@@ -447,7 +447,36 @@ def get_terms_and_conditions_list(filters=None):
 
 @frappe.whitelist(allow_guest=True)
 def get_tax_templates():
-    return frappe.get_all("Sales Taxes and Charges Template", fields="*")
+    try:
+        templates = frappe.get_all("Sales Taxes and Charges Template", fields=["name", "title"], order_by="creation desc")
+
+        result = []
+        for t in templates:
+            doc = frappe.get_doc("Sales Taxes and Charges Template", t.name)
+            result.append({
+                "name": doc.name,
+                "title": doc.title,
+                "taxes": [
+                    {
+                        "charge_type": tax.charge_type,
+                        "account_head": tax.account_head,
+                        "description": tax.description,
+                        "rate": tax.rate
+                    } for tax in doc.taxes
+                ]
+            })
+
+        return {
+            "status": "success",
+            "templates": result
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Tax Templates Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 @frappe.whitelist()
 def get_cost_centers_list(filters=None):
@@ -580,5 +609,5 @@ def get_all_customers():
 
 @frappe.whitelist()
 def get_items_details_list(filters=None):
-    return frappe.db.get_list("Item", filters=filters, fields="*")
+    return frappe.db.get_list("Item", filters=filters, fields=["name", "item_name", "item_group", "image", "standard_rate"])
 
