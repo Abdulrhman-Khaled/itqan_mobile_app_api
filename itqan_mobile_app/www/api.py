@@ -8,6 +8,7 @@ from frappe.utils import flt
 from frappe import _
 from frappe.utils import get_files_path
 from frappe.utils.file_manager import save_file
+from frappe.utils import nowdate, nowtime
 
 def flatten(lis):
     for item in lis:
@@ -445,7 +446,7 @@ def get_payment_terms_list(filters=None):
 def get_terms_and_conditions_list(filters=None):
     return frappe.db.get_list("Terms and Conditions", filters=filters, fields="name")
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_tax_templates():
     try:
         templates = frappe.get_all("Sales Taxes and Charges Template", fields=["name", "title"], order_by="creation desc")
@@ -609,5 +610,135 @@ def get_all_customers():
 
 @frappe.whitelist()
 def get_items_details_list(filters=None):
-    return frappe.db.get_list("Item", filters=filters, fields=["name", "item_name", "item_group", "image", "standard_rate"])
+    import json
+
+    try:
+        if isinstance(filters, str):
+            filters = json.loads(filters)
+
+        items = frappe.get_list("Item", filters=filters, fields=["name", "item_name", "item_group", "image", "standard_rate"], order_by="creation desc")
+
+        result = []
+        for item in items:
+            barcodes = frappe.get_all("Item Barcode", filters={"parent": item["name"]}, fields=["barcode"])
+            result.append({
+                "name": item["name"],
+                "item_name": item["item_name"],
+                "item_group": item["item_group"],
+                "image": item["image"],
+                "standard_rate": item["standard_rate"],
+                "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
+            })
+
+        return {
+            "status": "success",
+            "items": result
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Items Details List Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+
+@frappe.whitelist()
+def create_sales_invoice(data):
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        customer = data.get("customer")
+        items = data.get("items", [])
+        if not customer or not items:
+            return {"status": "error", "message": "Customer and items are required."}
+
+        # Default date/time
+        posting_date = data.get("posting_date") or nowdate()
+        posting_time = data.get("posting_time") or nowtime()
+        due_date = data.get("due_date") or posting_date
+
+        # Build item list
+        item_rows = []
+        for item in items:
+            item_rows.append({
+                "item_code": item["item_code"],
+                "qty": item.get("qty", 1),
+                "warehouse": data.get("warehouse")  # Optional
+            })
+
+        invoice = frappe.get_doc({
+            "doctype": "Sales Invoice",
+            "customer": customer,
+            "posting_date": posting_date,
+            "posting_time": posting_time,
+            "due_date": due_date,
+            "cost_center": data.get("cost_center"),
+            "project": data.get("project"),
+            "items": item_rows,
+            "update_stock": data.get("update_stock", 0),
+            "additional_discount_percentage": data.get("additional_discount_percentage", 0),
+            "discount_amount": data.get("discount_amount", 0),
+            "taxes_and_charges": data.get("taxes_and_charges")
+        })
+
+        invoice.insert(ignore_permissions=True)
+        invoice.submit()
+
+        return {
+            "status": "success",
+            "invoice_name": invoice.name
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
+        return {"status": "error", "message": str(e)}
+    
+
+@frappe.whitelist()
+def get_sales_invoice_details(name):
+    try:
+        invoice = frappe.get_doc("Sales Invoice", name)
+
+        return {
+            "status": "success",
+            "invoice": {
+                "name": invoice.name,
+                "customer": invoice.customer,
+                "posting_date": invoice.posting_date,
+                "posting_time": invoice.posting_time,
+                "due_date": invoice.due_date,
+                "cost_center": invoice.cost_center,
+                "project": invoice.project,
+                "warehouse": invoice.items[0].warehouse if invoice.items else None,
+                "items": [
+                    {
+                        "item_code": i.item_code,
+                        "qty": i.qty,
+                        "warehouse": i.warehouse
+                    } for i in invoice.items
+                ],
+                "update_stock": invoice.update_stock,
+                "additional_discount_percentage": invoice.additional_discount_percentage,
+                "discount_amount": invoice.discount_amount,
+                "taxes_and_charges": invoice.taxes_and_charges,
+                "grand_total": invoice.grand_total
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    
+
+@frappe.whitelist()
+def get_all_sales_invoices(filters=None):
+    try:
+        invoices = frappe.get_all("Sales Invoice", fields=["name"], order_by="creation desc", filters=filters)
+        return {"status": "success", "invoices": invoices}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+
 
