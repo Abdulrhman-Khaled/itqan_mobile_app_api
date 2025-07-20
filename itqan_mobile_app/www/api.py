@@ -295,7 +295,6 @@ def get_paid_to_accounts_query(payment_type, party_type, company=None):
         "account_type": ("in", account_types)
     }, "name", as_list = 1)  
 
-
 @frappe.whitelist()
 def get_paid_from_accounts_query(payment_type, party_type, company=None):
     if not company:
@@ -651,6 +650,7 @@ def create_sales_invoice(data):
             data = json.loads(data)
 
         customer = data.get("customer")
+        company = data.get("company")
         items = data.get("items", [])
         if not customer or not items:
             return {"status": "error", "message": "Customer and items are required."}
@@ -658,13 +658,33 @@ def create_sales_invoice(data):
         posting_date = data.get("posting_date")
         posting_time = data.get("posting_time")
         due_date = data.get("due_date") or posting_date
+        
+        debit_to = data.get("debit_to")
+        if not debit_to:
+            debit_to = frappe.db.get_value("Customer", customer, "default_receivable_account")
+            if not debit_to:
+                debit_to = frappe.db.get_value("Company", company, "default_receivable_account")
+
 
         item_rows = []
         for item in items:
+            item_code = item["item_code"]
+            qty = item.get("qty", 1)
+
+            income_account = frappe.db.get_value("Item Default", {
+                "parent": item_code,
+                "parenttype": "Item",
+                "company": company
+            }, "income_account")
+
+            if not income_account:
+                income_account = frappe.db.get_value("Company", company, "default_income_account")
+
             item_rows.append({
-                "item_code": item["item_code"],
-                "qty": item.get("qty", 1),
-                "warehouse": data.get("warehouse")
+                "item_code": item_code,
+                "qty": qty,
+                "warehouse": data.get("warehouse"),
+                "income_account": income_account
             })
 
         invoice = frappe.get_doc({
@@ -684,17 +704,7 @@ def create_sales_invoice(data):
             "apply_discount_on": data.get("apply_discount_on"),
             "taxes_and_charges": data.get("taxes_and_charges")
         })
-
-        if not invoice.debit_to:
-            invoice.debit_to = (
-                frappe.db.get_value("Party Account", {
-                    "parent": customer,
-                    "parenttype": "Customer",
-                    "company": invoice.company
-                }, "account")
-                or frappe.db.get_value("Company", invoice.company, "default_receivable_account")  # fallback
-            )
-
+      
         invoice.run_method("set_missing_values")
         invoice.run_method("calculate_taxes_and_totals")
 
@@ -708,7 +718,7 @@ def create_sales_invoice(data):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": invoice}
 
 
 @frappe.whitelist()
