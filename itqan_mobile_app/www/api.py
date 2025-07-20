@@ -681,6 +681,7 @@ def create_sales_invoice(data):
             "update_stock": data.get("update_stock", 0),
             "additional_discount_percentage": data.get("additional_discount_percentage", 0),
             "discount_amount": data.get("discount_amount", 0),
+            "apply_discount_on": data.get("apply_discount_on"),
             "taxes_and_charges": data.get("taxes_and_charges")
         })
 
