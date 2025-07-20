@@ -687,8 +687,12 @@ def create_sales_invoice(data):
 
         if not invoice.debit_to:
             invoice.debit_to = (
-                frappe.db.get_value("Customer", customer, "default_receivable_account")
-                or frappe.db.get_value("Company", invoice.company, "default_receivable_account")
+                frappe.db.get_value("Party Account", {
+                    "parent": customer,
+                    "parenttype": "Customer",
+                    "company": invoice.company
+                }, "account")
+                or frappe.db.get_value("Company", invoice.company, "default_receivable_account")  # fallback
             )
 
         for item in invoice.items:
