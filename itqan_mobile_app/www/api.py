@@ -695,10 +695,6 @@ def create_sales_invoice(data):
                 or frappe.db.get_value("Company", invoice.company, "default_receivable_account")  # fallback
             )
 
-        for item in invoice.items:
-            if not item.income_account:
-                item.income_account = get_income_account(item.item_code, invoice.company)
-
         invoice.run_method("set_missing_values")
         invoice.run_method("calculate_taxes_and_totals")
 
@@ -714,25 +710,6 @@ def create_sales_invoice(data):
         frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
         return {"status": "error", "message": str(e)}
 
-def get_income_account(item_code, company):
-    income_account = frappe.db.sql("""
-        SELECT default_income_account FROM `tabItem Default`
-        WHERE parent = %s AND company = %s
-        LIMIT 1
-    """, (item_code, company), as_dict=True)
-
-    if income_account and income_account[0].get("default_income_account"):
-        return income_account[0]["default_income_account"]
-
-    item_group = frappe.db.get_value("Item", item_code, "item_group")
-    if item_group:
-        group_account = frappe.db.get_value("Item Group", item_group, "default_income_account")
-        if group_account:
-            return group_account
-
-    return frappe.db.get_value("Company", company, "default_income_account")
-
-    
 
 @frappe.whitelist()
 def get_sales_invoice_details(name):
