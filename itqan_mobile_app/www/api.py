@@ -685,20 +685,20 @@ def create_sales_invoice(data):
             "taxes_and_charges": data.get("taxes_and_charges")
         })
 
+        if not invoice.debit_to:
+            invoice.debit_to = (
+                frappe.db.get_value("Customer", customer, "default_receivable_account")
+                or frappe.db.get_value("Company", invoice.company, "default_receivable_account")
+            )
+
+        for item in invoice.items:
+            if not item.income_account:
+                item.income_account = get_income_account(item.item_code, invoice.company)
+
         invoice.run_method("set_missing_values")
         invoice.run_method("calculate_taxes_and_totals")
 
-        # Fallback if debit_to is still None
-        if not invoice.debit_to:
-            invoice.debit_to = frappe.db.get_value("Company", invoice.company, "default_receivable_account")
-
-        # Fallback if any item is missing income_account
-        for item in invoice.items:
-            if not item.income_account:
-                item.income_account = frappe.db.get_value("Item", item.item_code, "income_account") or \
-                                    frappe.db.get_value("Item Group", frappe.db.get_value("Item", item.item_code, "item_group"), "default_income_account") or \
-                                    frappe.db.get_value("Company", invoice.company, "default_income_account")
-
+        
         invoice.insert(ignore_permissions=True)
 
         return {
@@ -709,6 +709,24 @@ def create_sales_invoice(data):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
         return {"status": "error", "message": str(e)}
+
+def get_income_account(item_code, company):
+    income_account = frappe.db.sql("""
+        SELECT default_income_account FROM `tabItem Default`
+        WHERE parent = %s AND company = %s
+        LIMIT 1
+    """, (item_code, company), as_dict=True)
+
+    if income_account and income_account[0].get("default_income_account"):
+        return income_account[0]["default_income_account"]
+
+    item_group = frappe.db.get_value("Item", item_code, "item_group")
+    if item_group:
+        group_account = frappe.db.get_value("Item Group", item_group, "default_income_account")
+        if group_account:
+            return group_account
+
+    return frappe.db.get_value("Company", company, "default_income_account")
 
     
 
