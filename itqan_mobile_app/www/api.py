@@ -718,7 +718,7 @@ def create_sales_invoice(data):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
-        return {"status": "error", "message": invoice}
+        return {"status": "error", "message": str(e)}
 
 
 @frappe.whitelist()
