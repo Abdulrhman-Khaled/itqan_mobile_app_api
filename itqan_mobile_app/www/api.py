@@ -661,8 +661,9 @@ def create_sales_invoice(data):
         item_rows = []
         for item in items:
             item_rows.append({
-                 "item_code": item["item_code"],
+                "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
+                "rate": item.get("rate", 0),
                 "warehouse": data.get("warehouse"),
             })
 
