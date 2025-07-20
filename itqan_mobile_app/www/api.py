@@ -670,6 +670,7 @@ def create_sales_invoice(data):
         invoice = frappe.get_doc({
             "doctype": "Sales Invoice",
             "customer": customer,
+            "company": data.get("company"),
             "posting_date": posting_date,
             "posting_time": posting_time,
             "set_posting_time": 1,
