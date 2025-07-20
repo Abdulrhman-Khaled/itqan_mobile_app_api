@@ -626,6 +626,7 @@ def get_items_details_list(filters=None):
                 "item_group": item["item_group"],
                 "image": item["image"],
                 "standard_rate": item["standard_rate"],
+                "income_account" : frappe.db.get_value("Item Group", item["item_group"], "income_account"),
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
             })
 
@@ -650,7 +651,6 @@ def create_sales_invoice(data):
             data = json.loads(data)
 
         customer = data.get("customer")
-        company = data.get("company")
         items = data.get("items", [])
         if not customer or not items:
             return {"status": "error", "message": "Customer and items are required."}
@@ -659,27 +659,24 @@ def create_sales_invoice(data):
         posting_time = data.get("posting_time")
         due_date = data.get("due_date") or posting_date
         
-
-        debit_to = frappe.db.get_value("Company", company, "default_receivable_account")
-        frappe.log_error(title="Debit to Invoice API", message=f"Debit To: {debit_to}")
-
         item_rows = []
         for item in items:
             item_code = item["item_code"]
             qty = item.get("qty", 1)
+            income_account = item.get("income_account")
 
             item_rows.append({
                 "item_code": item_code,
                 "qty": qty,
                 "warehouse": data.get("warehouse"),
-                "income_account": frappe.db.get_value("Company", company, "default_income_account")
+                "income_account": income_account
             })
 
         invoice = frappe.get_doc({
             "doctype": "Sales Invoice",
             "customer": customer,
             "company": data.get("company"),
-            "debit_to": debit_to,
+            "debit_to": data.get("debit_to"),
             "posting_date": posting_date,
             "posting_time": posting_time,
             "set_posting_time": 1,
@@ -694,9 +691,7 @@ def create_sales_invoice(data):
             "taxes_and_charges": data.get("taxes_and_charges")
         })
 
-        frappe.log_error(invoice, "Invoice API")
 
-      
         invoice.run_method("set_missing_values")
         invoice.run_method("calculate_taxes_and_totals")
 
