@@ -660,12 +660,9 @@ def create_sales_invoice(data):
         
         item_rows = []
         for item in items:
-            item_code = item["item_code"]
-            qty = item.get("qty", 1)
-
             item_rows.append({
-                "item_code": item_code,
-                "qty": qty,
+                 "item_code": item["item_code"],
+                "qty": item.get("qty", 1),
                 "warehouse": data.get("warehouse"),
             })
 
