@@ -660,10 +660,15 @@ def create_sales_invoice(data):
         
         item_rows = []
         for item in items:
+            item_price = frappe.db.get_value("Item Price", {
+                "item_code": item["item_code"],
+                "selling": 1,
+            }, "price_list_rate")
             item_rows.append({
                 "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
                 "warehouse": data.get("warehouse"),
+                "rate": item_price
             })
 
         invoice = frappe.get_doc({
@@ -683,7 +688,6 @@ def create_sales_invoice(data):
             "taxes_and_charges": data.get("taxes_and_charges")
         })
 
-        invoice.set_missing_values()
         invoice.run_method("calculate_taxes_and_totals")
 
         invoice.insert(ignore_permissions=True)
