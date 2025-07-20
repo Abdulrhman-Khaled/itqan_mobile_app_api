@@ -661,8 +661,7 @@ def create_sales_invoice(data):
         
 
         debit_to = frappe.db.get_value("Company", company, "default_receivable_account")
-        frappe.log_error(debit_to, "Debit to Invoice API")
-
+        frappe.log_error(title="Debit to Invoice API", message=f"Debit To: {debit_to}")
 
         item_rows = []
         for item in items:
