@@ -626,7 +626,6 @@ def get_items_details_list(filters=None):
                 "item_group": item["item_group"],
                 "image": item["image"],
                 "standard_rate": item["standard_rate"],
-                "income_account" : frappe.db.get_value("Item Group", item["item_group"], "income_account"),
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
             })
 
