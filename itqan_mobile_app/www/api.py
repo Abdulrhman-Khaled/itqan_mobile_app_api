@@ -655,18 +655,16 @@ def create_sales_invoice(data):
         if not customer or not items:
             return {"status": "error", "message": "Customer and items are required."}
 
-        # Default date/time
-        posting_date = data.get("posting_date") or nowdate()
-        posting_time = data.get("posting_time") or nowtime()
+        posting_date = data.get("posting_date")
+        posting_time = data.get("posting_time")
         due_date = data.get("due_date") or posting_date
 
-        # Build item list
         item_rows = []
         for item in items:
             item_rows.append({
                 "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
-                "warehouse": data.get("warehouse")  # Optional
+                "warehouse": data.get("warehouse")
             })
 
         invoice = frappe.get_doc({
@@ -674,6 +672,7 @@ def create_sales_invoice(data):
             "customer": customer,
             "posting_date": posting_date,
             "posting_time": posting_time,
+            "set_posting_time": 1,
             "due_date": due_date,
             "cost_center": data.get("cost_center"),
             "project": data.get("project"),
@@ -684,8 +683,10 @@ def create_sales_invoice(data):
             "taxes_and_charges": data.get("taxes_and_charges")
         })
 
+        invoice.run_method("set_missing_values")
+        invoice.run_method("calculate_taxes_and_totals")
+
         invoice.insert(ignore_permissions=True)
-        invoice.submit()
 
         return {
             "status": "success",
@@ -695,6 +696,7 @@ def create_sales_invoice(data):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
         return {"status": "error", "message": str(e)}
+
     
 
 @frappe.whitelist()
