@@ -663,7 +663,6 @@ def create_sales_invoice(data):
             item_rows.append({
                 "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
-                "rate": item.get("rate", 0),
                 "warehouse": data.get("warehouse"),
             })
 
@@ -672,7 +671,7 @@ def create_sales_invoice(data):
             "customer": customer,
             "posting_date": posting_date,
             "posting_time": posting_time,
-            "set_posting_time": 1,
+            "set_posting_time": data.get("set_posting_time", 0),
             "due_date": due_date,
             "cost_center": data.get("cost_center"),
             "project": data.get("project"),
@@ -684,6 +683,7 @@ def create_sales_invoice(data):
             "taxes_and_charges": data.get("taxes_and_charges")
         })
 
+        invoice.set_missing_values()
         invoice.run_method("calculate_taxes_and_totals")
 
         invoice.insert(ignore_permissions=True)
