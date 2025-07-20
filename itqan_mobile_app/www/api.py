@@ -659,11 +659,8 @@ def create_sales_invoice(data):
         posting_time = data.get("posting_time")
         due_date = data.get("due_date") or posting_date
         
-        debit_to = data.get("debit_to")
-        if not debit_to:
-            debit_to = frappe.db.get_value("Customer", customer, "default_receivable_account")
-            if not debit_to:
-                debit_to = frappe.db.get_value("Company", company, "default_receivable_account")
+
+        debit_to = frappe.db.get_value("Company", company, "default_receivable_account")
 
 
         item_rows = []
@@ -691,6 +688,7 @@ def create_sales_invoice(data):
             "doctype": "Sales Invoice",
             "customer": customer,
             "company": data.get("company"),
+            "debit_to": debit_to,
             "posting_date": posting_date,
             "posting_time": posting_time,
             "set_posting_time": 1,
