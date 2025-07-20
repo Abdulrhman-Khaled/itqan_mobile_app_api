@@ -661,6 +661,7 @@ def create_sales_invoice(data):
         
 
         debit_to = frappe.db.get_value("Company", company, "default_receivable_account")
+        frappe.log_error(debit_to, "Debit to Invoice API")
 
 
         item_rows = []
@@ -668,20 +669,11 @@ def create_sales_invoice(data):
             item_code = item["item_code"]
             qty = item.get("qty", 1)
 
-            income_account = frappe.db.get_value("Item Default", {
-                "parent": item_code,
-                "parenttype": "Item",
-                "company": company
-            }, "income_account")
-
-            if not income_account:
-                income_account = frappe.db.get_value("Company", company, "default_income_account")
-
             item_rows.append({
                 "item_code": item_code,
                 "qty": qty,
                 "warehouse": data.get("warehouse"),
-                "income_account": income_account
+                "income_account": frappe.db.get_value("Company", company, "default_income_account")
             })
 
         invoice = frappe.get_doc({
@@ -702,6 +694,9 @@ def create_sales_invoice(data):
             "apply_discount_on": data.get("apply_discount_on"),
             "taxes_and_charges": data.get("taxes_and_charges")
         })
+
+        frappe.log_error(invoice, "Invoice API")
+
       
         invoice.run_method("set_missing_values")
         invoice.run_method("calculate_taxes_and_totals")
