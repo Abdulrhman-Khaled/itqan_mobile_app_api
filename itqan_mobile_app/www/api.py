@@ -726,17 +726,20 @@ def get_sales_invoice_details(name):
             "status": "success",
             "invoice": {
                 "name": invoice.name,
+                "status": invoice.status,
                 "customer": invoice.customer,
                 "posting_date": invoice.posting_date,
                 "posting_time": invoice.posting_time,
+                "set_posting_time": invoice.set_posting_time,
                 "due_date": invoice.due_date,
                 "cost_center": invoice.cost_center,
                 "project": invoice.project,
-                "warehouse": invoice.items[0].warehouse if invoice.items else None,
+                "warehouse": invoice.set_warehouse,
                 "items": [
                     {
                         "item_code": i.item_code,
                         "qty": i.qty,
+                        "rate": i.rate,
                         "warehouse": i.warehouse
                     } for i in invoice.items
                 ],
@@ -744,6 +747,7 @@ def get_sales_invoice_details(name):
                 "additional_discount_percentage": invoice.additional_discount_percentage,
                 "discount_amount": invoice.discount_amount,
                 "taxes_and_charges": invoice.taxes_and_charges,
+                "total_taxes_and_charges": invoice.total_taxes_and_charges,
                 "grand_total": invoice.grand_total
             }
         }
