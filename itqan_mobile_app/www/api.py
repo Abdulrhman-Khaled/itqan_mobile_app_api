@@ -667,7 +667,6 @@ def create_sales_invoice(data):
             item_rows.append({
                 "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
-                "warehouse": data.get("warehouse"),
                 "rate": item_price
             })
 
@@ -685,8 +684,24 @@ def create_sales_invoice(data):
             "additional_discount_percentage": data.get("additional_discount_percentage", 0),
             "discount_amount": data.get("discount_amount", 0),
             "apply_discount_on": data.get("apply_discount_on"),
-            "taxes_and_charges": data.get("taxes_and_charges")
+            "taxes_and_charges": data.get("taxes_and_charges"),
+            "set_warehouse": data.get("warehouse"),
         })
+   
+        if data.get("taxes_and_charges"):
+            tax_template = frappe.get_doc("Sales Taxes and Charges Template", data["taxes_and_charges"])
+            for tax in tax_template.taxes:
+                invoice.append("taxes", {
+                    "charge_type": tax.charge_type,
+                    "account_head": tax.account_head,
+                    "description": tax.description,
+                    "cost_center": tax.cost_center,
+                    "rate": tax.rate,
+                    "tax_amount": tax.tax_amount,
+                    "included_in_print_rate": tax.included_in_print_rate,
+                    "row_id": tax.row_id
+                })
+
 
         invoice.run_method("calculate_taxes_and_totals")
 
