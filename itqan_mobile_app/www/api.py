@@ -738,6 +738,7 @@ def get_sales_invoice_details(name):
                 "items": [
                     {
                         "item_code": i.item_code,
+                        "item_name": i.item_name,
                         "qty": i.qty,
                         "rate": i.rate,
                         "warehouse": i.warehouse
