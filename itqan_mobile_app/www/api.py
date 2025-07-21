@@ -787,6 +787,29 @@ def submit_sales_invoice(invoice_name):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Submit Sales Invoice API")
         return {"status": "error", "message": str(e)}
+    
+@frappe.whitelist()
+def submit_payment_entry(payment_entry_name):
+    try:
+        if not payment_entry_name:
+            return {"status": "error", "message": "Payment Entry name is required."}
+
+        pe = frappe.get_doc("Payment Entry", payment_entry_name)
+
+        if pe.docstatus == 1:
+            return {"status": "error", "message": f"{payment_entry_name} is already submitted."}
+
+        if pe.docstatus == 2:
+            return {"status": "error", "message": f"{payment_entry_name} is cancelled and cannot be submitted."}
+
+        pe.submit()
+
+        return {"status": "success", "message": f"{payment_entry_name} submitted successfully."}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Submit Payment Entry API")
+        return {"status": "error", "message": str(e)}
+
 
 
 
