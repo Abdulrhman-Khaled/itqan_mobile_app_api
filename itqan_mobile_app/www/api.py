@@ -27,6 +27,7 @@ def get_user(user):
 def get_items_list(filters=None):
     return frappe.db.get_list("Item", filters=filters, fields="name")
 
+'''
 @frappe.whitelist()
 def create_payment(args):
     if isinstance(args, string_types):
@@ -67,6 +68,47 @@ def create_payment(args):
         return {"error": e, "status": 0}
 
     return {"error": 0, "status": 1}
+'''
+
+@frappe.whitelist()
+def create_payment(args):
+    if isinstance(args, string_types):
+        args = json.loads(args)
+
+    if not frappe.has_permission("Payment Entry", ptype="write", user=args.get("owner", frappe.session.user)):
+        return {"error": "Not Permitted", "status": 0}
+
+    try:
+        doc = frappe.new_doc("Payment Entry")
+
+        # Basic required fields
+        doc.payment_type = args.get("payment_type")
+        doc.posting_date = args.get("posting_date") or nowdate()
+        doc.mode_of_payment = args.get("mode_of_payment")
+        doc.party_type = args.get("party_type")
+        doc.party = args.get("party")
+        doc.party_name = args.get("party_name")
+        doc.paid_from = args.get("paid_from")
+        doc.paid_to = args.get("paid_to")
+        doc.paid_amount = args.get("paid_amount")
+        doc.received_amount = args.get("paid_amount")
+
+        # Optional taxes templates
+        doc.sales_taxes_and_charges_template = args.get("sales_taxes_and_charges_template")
+        doc.purchase_taxes_and_charges_template = args.get("purchase_taxes_and_charges_template")
+
+        # Insert and Submit
+        doc.insert()
+
+        return {
+            "status": 1,
+            "name": doc.name,
+            "message": f"Payment Entry {doc.name} submitted successfully."
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Payment Entry Error")
+        return {"status": 0, "error": str(e)}
 
 @frappe.whitelist()
 def update_payment(args):
@@ -640,8 +682,6 @@ def get_items_details_list(filters=None):
             "status": "error",
             "message": str(e)
         }
-
-
 
 @frappe.whitelist()
 def create_sales_invoice(data):
