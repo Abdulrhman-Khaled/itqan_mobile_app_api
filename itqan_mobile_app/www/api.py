@@ -97,6 +97,33 @@ def create_payment(args):
         doc.sales_taxes_and_charges_template = args.get("sales_taxes_and_charges_template")
         doc.purchase_taxes_and_charges_template = args.get("purchase_taxes_and_charges_template")
 
+        # Apply sales tax template if provided
+        template_name = args.get("sales_taxes_and_charges_template")
+        if template_name:
+            template = frappe.get_doc("Sales Taxes and Charges Template", template_name)
+            for tax in template.taxes:
+                doc.append("advance_taxes_and_charges", {
+                    "charge_type": tax.charge_type,
+                    "account_head": tax.account_head,
+                    "description": tax.description,
+                    "rate": tax.rate,
+                    "cost_center": tax.cost_center,
+                    "included_in_paid_amount": tax.included_in_print_rate,
+                })
+
+        purchase_template = args.get("purchase_taxes_and_charges_template")
+        if purchase_template:
+            template = frappe.get_doc("Purchase Taxes and Charges Template", purchase_template)
+            for tax in template.taxes:
+                doc.append("advance_taxes_and_charges", {
+                    "charge_type": tax.charge_type,
+                    "account_head": tax.account_head,
+                    "description": tax.description,
+                    "rate": tax.rate,
+                    "cost_center": tax.cost_center,
+                    "included_in_paid_amount": tax.included_in_print_rate
+                })
+
         # Insert and Submit
         doc.insert()
         frappe.db.commit()
