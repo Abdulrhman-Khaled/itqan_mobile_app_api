@@ -267,7 +267,7 @@ def create_purchase_invoice(args):
 
     doc = frappe.new_doc("Purchase Invoice")
 
-    tables = doc.meta.get_table_fields()
+    tables = doc.meta.get_table_fields() or []
     tables_names = {}
     if tables:
         for df in tables:
