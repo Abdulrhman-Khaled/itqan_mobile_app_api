@@ -727,6 +727,7 @@ def get_sales_invoice_details(name):
             "invoice": {
                 "name": invoice.name,
                 "status": invoice.status,
+                "docstatus": invoice.docstatus,
                 "customer": invoice.customer,
                 "posting_date": invoice.posting_date,
                 "posting_time": invoice.posting_time,
