@@ -763,6 +763,29 @@ def get_all_sales_invoices(filters=None):
         return {"status": "success", "invoices": invoices}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    
+
+@frappe.whitelist()
+def submit_sales_invoice(invoice_name):
+    try:
+        if not invoice_name:
+            return {"status": "error", "message": "Invoice name is required."}
+
+        invoice = frappe.get_doc("Sales Invoice", invoice_name)
+
+        if invoice.docstatus == 1:
+            return {"status": "error", "message": f"{invoice_name} is already submitted."}
+
+        if invoice.docstatus == 2:
+            return {"status": "error", "message": f"{invoice_name} is cancelled and cannot be submitted."}
+
+        invoice.submit()
+
+        return {"status": "success", "message": f"{invoice_name} submitted successfully."}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Submit Sales Invoice API")
+        return {"status": "error", "message": str(e)}
 
 
 
