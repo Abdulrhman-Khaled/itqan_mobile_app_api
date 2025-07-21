@@ -27,49 +27,6 @@ def get_user(user):
 def get_items_list(filters=None):
     return frappe.db.get_list("Item", filters=filters, fields="name")
 
-'''
-@frappe.whitelist()
-def create_payment(args):
-    if isinstance(args, string_types):
-        args = json.loads(args)
-
-    if not frappe.has_permission("Payment Entry", ptype= "write", user=args.get("owner")):
-        return {"error": "Not Permitted", "status": 0}
-
-    doc = frappe.new_doc("Payment Entry")
-
-    tables = doc.meta.get_table_fields()
-    tables_names = {}
-    if tables:
-        for df in tables:
-            tables_names[df.fieldname] = df.options
-
-    for field in args:
-        if field in tables_names:
-            for d in args.get(field):
-                new_doc = frappe.new_doc(tables_names[field], as_dict=True)
-                for attr in d:
-                    if hasattr(new_doc, attr):
-                        setattr(new_doc, attr, d[attr])
-
-                doc.append(field, new_doc)
-
-        elif hasattr(doc, field):
-            setattr(doc, field, args.get(field))
-
-    if not doc.received_amount:
-        doc.received_amount = doc.paid_amount
-
-
-    try:
-        doc.insert()
-        frappe.db.commit()
-    except Exception as e:
-        return {"error": e, "status": 0}
-
-    return {"error": 0, "status": 1}
-'''
-
 @frappe.whitelist()
 def create_payment(args):
     if isinstance(args, string_types):
@@ -102,7 +59,7 @@ def create_payment(args):
         if template_name:
             template = frappe.get_doc("Sales Taxes and Charges Template", template_name)
             for tax in template.taxes:
-                doc.append("advance_taxes_and_charges", {
+                doc.append("taxes", {
                     "charge_type": tax.charge_type,
                     "account_head": tax.account_head,
                     "description": tax.description,
@@ -115,7 +72,7 @@ def create_payment(args):
         if purchase_template:
             template = frappe.get_doc("Purchase Taxes and Charges Template", purchase_template)
             for tax in template.taxes:
-                doc.append("advance_taxes_and_charges", {
+                doc.append("taxes", {
                     "charge_type": tax.charge_type,
                     "account_head": tax.account_head,
                     "description": tax.description,
