@@ -99,11 +99,12 @@ def create_payment(args):
 
         # Insert and Submit
         doc.insert()
+        frappe.db.commit()
 
         return {
             "status": 1,
             "name": doc.name,
-            "message": f"Payment Entry {doc.name} submitted successfully."
+            "message": f"Payment Entry {doc.name} created successfully."
         }
 
     except Exception as e:
