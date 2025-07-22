@@ -50,6 +50,10 @@ def create_payment(args):
         doc.paid_amount = args.get("paid_amount")
         doc.received_amount = args.get("paid_amount")
 
+        if args.get("reference_no"):
+            doc.reference_no = args.get("reference_no")
+            doc.reference_date = nowdate()
+
         # Insert and Submit
         doc.insert()
         frappe.db.commit()
@@ -96,7 +100,7 @@ def update_payment(args):
 
 @frappe.whitelist()
 def get_payment_entries_list(filters=None):
-    return frappe.db.get_list("Payment Entry", filters=filters, fields="name")
+    return frappe.db.get_list("Payment Entry", filters=filters, fields=["name", "posting_date", "party_name", "payment_type"])
 
 @frappe.whitelist()
 def get_payment_entry(payment_entry):
@@ -361,14 +365,14 @@ def get_accounts_list(filters=None):
 
 @frappe.whitelist()
 def get_mode_of_payments_list(company, filters=None):
-    modes = frappe.get_all("Mode of Payment", filters=filters, fields=["name"])
+    modes = frappe.get_all("Mode of Payment", filters=filters, fields=["name", "type"])
     result = []
 
     for mode in modes:
         account = frappe.get_value(
             "Mode of Payment Account",
             filters={
-                "parent": mode.name,
+                "parent": mode.name,               
                 "company": company
             },
             fieldname="default_account"
@@ -376,6 +380,7 @@ def get_mode_of_payments_list(company, filters=None):
 
         result.append({
             "name": mode.name,
+            "type": mode.type,
             "account": account
         })
 
@@ -724,6 +729,7 @@ def get_sales_invoice_details(name):
                 "docstatus": invoice.docstatus,
                 "company": invoice.company,
                 "customer": invoice.customer,
+                "customer_name" : invoice.customer_name,
                 "posting_date": invoice.posting_date,
                 "posting_time": invoice.posting_time,
                 "set_posting_time": invoice.set_posting_time,
@@ -755,7 +761,7 @@ def get_sales_invoice_details(name):
 @frappe.whitelist()
 def get_all_sales_invoices(filters=None):
     try:
-        invoices = frappe.get_all("Sales Invoice", fields=["name"], order_by="creation desc", filters=filters)
+        invoices = frappe.get_all("Sales Invoice", fields=["name", "customer_name", "posting_date", "status"], order_by="creation desc", filters=filters)
         return {"status": "success", "invoices": invoices}
     except Exception as e:
         return {"status": "error", "message": str(e)}
