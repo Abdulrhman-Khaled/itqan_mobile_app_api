@@ -10,6 +10,8 @@ from frappe.utils import get_files_path
 from frappe.utils.file_manager import save_file
 from frappe.utils import nowdate, nowtime
 
+def log_error(title, error):
+    frappe.log_error(frappe.get_traceback(), title)
 def flatten(lis):
     for item in lis:
         if isinstance(item, Iterable) and not isinstance(item, str):
@@ -811,7 +813,64 @@ def submit_payment_entry(payment_entry_name):
         frappe.log_error(frappe.get_traceback(), "Submit Payment Entry API")
         return {"status": "error", "message": str(e)}
 
+@frappe.whitelist()
+def get_all_material_requests():
+    try:
+        return frappe.get_all("Material Request", fields=["name", "material_request_type", "transaction_date", "status", "docstatus"], order_by="creation desc")
+    except Exception as e:
+        log_error("Get All Material Requests Error", e)
+        return {"error": str(e)}
 
+@frappe.whitelist()
+def get_material_request(name):
+    try:
+        doc = frappe.get_doc("Material Request", name)
+        return doc.as_dict()
+    except Exception as e:
+        log_error("Get Material Request Error", e)
+        return {"error": str(e)}
+    
+@frappe.whitelist()
+def create_material_request(data):
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
 
+        doc = frappe.new_doc("Material Request")
+        doc.material_request_type = data.get("material_request_type", "Purchase")
+        doc.schedule_date = data.get("schedule_date")
+        doc.company = data.get("company")
+        doc.set_warehouse = data.get("set_warehouse")
+        doc.set_from_warehouse = data.get("set_from_warehouse") 
+        doc.requested_by = data.get("requested_by")
+        doc.transaction_date = data.get("transaction_date")
 
+        # Items list
+        items = data.get("items", [])
+        for item in items:
+            doc.append("items", {
+                "item_code": item["item_code"],
+                "qty": item["qty"],
+                "rate": item["rate"],
+                "schedule_date": item.get("schedule_date", doc.schedule_date),
+                "uom": item.get("uom", "Nos")
+            })
 
+        doc.save(ignore_permissions=True)
+        return {"name": doc.name, "message": "Material Request saved as draft."}
+    except Exception as e:
+        log_error("Create Material Request Error", e)
+        return {"error": str(e)}
+
+@frappe.whitelist()
+def submit_material_request(name):
+    try:
+        doc = frappe.get_doc("Material Request", name)
+        if doc.docstatus == 0:
+            doc.submit()
+            return {"name": doc.name, "message": "Material Request submitted."}
+        else:
+            return {"error": "Material Request already submitted or cancelled."}
+    except Exception as e:
+        log_error("Submit Material Request Error", e)
+        return {"error": str(e)}
