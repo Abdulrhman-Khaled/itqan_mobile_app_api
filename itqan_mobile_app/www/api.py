@@ -395,7 +395,7 @@ def get_employees_list(filters=None):
 
 @frappe.whitelist()
 def get_suppliers_list(filters=None):
-    return frappe.db.get_list("Supplier", filters=filters, fields="name")
+    return frappe.db.get_list("Supplier", filters=filters, fields=["name", "supplier_name"])
 
 @frappe.whitelist()
 def get_shareholders_list(filters=None):
