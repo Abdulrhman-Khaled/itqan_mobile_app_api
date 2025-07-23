@@ -12,6 +12,7 @@ from frappe.utils import nowdate, nowtime
 
 def log_error(title, error):
     frappe.log_error(frappe.get_traceback(), title)
+
 def flatten(lis):
     for item in lis:
         if isinstance(item, Iterable) and not isinstance(item, str):
@@ -402,7 +403,7 @@ def get_shareholders_list(filters=None):
 
 @frappe.whitelist()
 def get_customers_list(filters=None):
-    return frappe.db.get_list("Customer", filters=filters, fields="name")
+    return frappe.db.get_list("Customer", filters=filters, fields=["name", "customer_name"])
 
 @frappe.whitelist()
 def get_currencies_list(filters=None):
@@ -618,7 +619,7 @@ def get_items_details_list(filters=None):
         if isinstance(filters, str):
             filters = json.loads(filters)
 
-        items = frappe.get_list("Item", filters=filters, fields=["name", "item_name", "item_group", "image", "standard_rate"], order_by="creation desc")
+        items = frappe.get_list("Item", filters=filters, fields=["name", "item_name", "item_group", "image", "standard_rate", "stock_uom"], order_by="creation desc")
 
         result = []
         for item in items:
@@ -628,6 +629,7 @@ def get_items_details_list(filters=None):
                 "item_name": item["item_name"],
                 "item_group": item["item_group"],
                 "image": item["image"],
+                "stock_uom": item["stock_uom"],
                 "standard_rate": item["standard_rate"],
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
             })
@@ -717,7 +719,6 @@ def create_sales_invoice(data):
         frappe.log_error(frappe.get_traceback(), "Create Sales Invoice API")
         return {"status": "error", "message": str(e)}
 
-
 @frappe.whitelist()
 def get_sales_invoice_details(name):
     try:
@@ -759,7 +760,6 @@ def get_sales_invoice_details(name):
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
-
 @frappe.whitelist()
 def get_all_sales_invoices(filters=None):
     try:
@@ -768,7 +768,6 @@ def get_all_sales_invoices(filters=None):
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
-
 @frappe.whitelist()
 def submit_sales_invoice(invoice_name):
     try:
@@ -814,9 +813,9 @@ def submit_payment_entry(payment_entry_name):
         return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
-def get_all_material_requests():
+def get_all_material_requests(filters=None):
     try:
-        return frappe.get_all("Material Request", fields=["name", "material_request_type", "transaction_date", "status", "docstatus"], order_by="creation desc")
+        return frappe.get_all("Material Request", fields=["name", "material_request_type", "transaction_date", "status", "docstatus"], order_by="creation desc", filters=filters)
     except Exception as e:
         log_error("Get All Material Requests Error", e)
         return {"error": str(e)}
