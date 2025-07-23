@@ -838,10 +838,8 @@ def create_material_request(data):
         doc = frappe.new_doc("Material Request")
         doc.material_request_type = data.get("material_request_type", "Purchase")
         doc.schedule_date = data.get("schedule_date")
-        doc.company = data.get("company")
         doc.set_warehouse = data.get("set_warehouse")
         doc.set_from_warehouse = data.get("set_from_warehouse") 
-        doc.requested_by = data.get("requested_by")
         doc.transaction_date = data.get("transaction_date")
 
         # Items list
@@ -851,12 +849,12 @@ def create_material_request(data):
                 "item_code": item["item_code"],
                 "qty": item["qty"],
                 "rate": item["rate"],
-                "schedule_date": item.get("schedule_date", doc.schedule_date),
-                "uom": item.get("uom", "Nos")
+                "uom": item.get("stock_uom", "Nos")
             })
 
         doc.save(ignore_permissions=True)
-        return {"name": doc.name, "message": "Material Request saved as draft."}
+       
+        return {"status": "success","name": doc.name, "message": "Material Request saved as draft."}
     except Exception as e:
         log_error("Create Material Request Error", e)
         return {"error": str(e)}
