@@ -103,7 +103,7 @@ def update_payment(args):
 
 @frappe.whitelist()
 def get_payment_entries_list(filters=None):
-    return frappe.db.get_list("Payment Entry", filters=filters, fields=["name", "posting_date", "party_name", "payment_type"])
+    return frappe.db.get_list("Payment Entry", filters=filters, fields=["name", "posting_date", "party_name", "payment_type", "status"])
 
 @frappe.whitelist()
 def get_payment_entry(payment_entry):
