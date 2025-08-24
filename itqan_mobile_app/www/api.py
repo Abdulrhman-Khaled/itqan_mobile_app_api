@@ -628,11 +628,15 @@ def get_items_details_list(filters=None):
 
         result = []
         for item in items:
-            item_price = frappe.db.get_value(
-                "Item Price",
-                {"item_code": item["name"], "price_list": "Standard Selling"},
-                "price_list_rate"
-            )
+            item_price = frappe.db.sql("""
+                SELECT price_list_rate 
+                FROM `tabItem Price` 
+                WHERE item_code=%s AND selling=1
+                ORDER BY modified DESC 
+                LIMIT 1
+            """, (item["name"],), as_dict=True)
+
+            rate = item_price[0]["price_list_rate"] if item_price else 0
 
             barcodes = frappe.get_all(
                 "Item Barcode", 
@@ -646,7 +650,7 @@ def get_items_details_list(filters=None):
                 "item_group": item["item_group"],
                 "image": item["image"],
                 "stock_uom": item["stock_uom"],
-                "standard_rate": item_price if item_price else 0,
+                "standard_rate": rate,
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
             })
 
