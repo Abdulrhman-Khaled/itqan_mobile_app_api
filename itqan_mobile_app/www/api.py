@@ -619,18 +619,34 @@ def get_items_details_list(filters=None):
         if isinstance(filters, str):
             filters = json.loads(filters)
 
-        items = frappe.get_list("Item", filters=filters, fields=["name", "item_name", "item_group", "image", "standard_rate", "stock_uom"], order_by="creation desc")
+        items = frappe.get_list(
+            "Item", 
+            filters=filters, 
+            fields=["name", "item_name", "item_group", "image", "stock_uom"], 
+            order_by="creation desc"
+        )
 
         result = []
         for item in items:
-            barcodes = frappe.get_all("Item Barcode", filters={"parent": item["name"]}, fields=["barcode"])
+            item_price = frappe.db.get_value(
+                "Item Price",
+                {"item_code": item["name"], "price_list": "Standard Selling"},
+                "price_list_rate"
+            )
+
+            barcodes = frappe.get_all(
+                "Item Barcode", 
+                filters={"parent": item["name"]}, 
+                fields=["barcode"]
+            )
+
             result.append({
                 "name": item["name"],
                 "item_name": item["item_name"],
                 "item_group": item["item_group"],
                 "image": item["image"],
                 "stock_uom": item["stock_uom"],
-                "standard_rate": item["standard_rate"],
+                "standard_rate": item_price if item_price else 0,
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
             })
 
