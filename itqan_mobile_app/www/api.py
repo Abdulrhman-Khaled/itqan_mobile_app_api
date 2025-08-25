@@ -683,10 +683,11 @@ def create_sales_invoice(data):
         
         item_rows = []
         for item in items:
-            item_price = frappe.db.get_value("Item Price", {
+            item_price = item.get("rate") or frappe.db.get_value("Item Price", {
                 "item_code": item["item_code"],
                 "selling": 1,
             }, "price_list_rate")
+
             item_rows.append({
                 "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
