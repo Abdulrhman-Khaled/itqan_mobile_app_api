@@ -8,7 +8,7 @@ from frappe.utils import flt
 from frappe import _
 from frappe.utils import get_files_path
 from frappe.utils.file_manager import save_file
-from frappe.utils import nowdate, nowtime
+from frappe.utils import nowdate, nowtime, get_first_day, getdate
 
 def log_error(title, error):
     frappe.log_error(frappe.get_traceback(), title)
@@ -892,3 +892,93 @@ def submit_material_request(name):
     except Exception as e:
         log_error("Submit Material Request Error", e)
         return {"error": str(e)}
+
+@frappe.whitelist()
+def get_sales_statistics():
+    today = nowdate()
+    month_start = get_first_day(today)
+    year_start = f"{getdate(today).year}-01-01"
+
+    stats = {}
+
+    # 1- Sales Invoice today (amount + count)
+    stats["sales_today"] = frappe.db.sql("""
+        SELECT 
+            COALESCE(SUM(grand_total), 0) as total_amount,
+            COUNT(name) as total_count
+        FROM `tabSales Invoice`
+        WHERE posting_date = %s AND docstatus = 1
+    """, today, as_dict=True)[0]
+
+    # 2- Sales Invoice this month
+    stats["sales_month"] = frappe.db.sql("""
+        SELECT 
+            COALESCE(SUM(grand_total), 0) as total_amount,
+            COUNT(name) as total_count
+        FROM `tabSales Invoice`
+        WHERE posting_date >= %s AND posting_date <= %s AND docstatus = 1
+    """, (month_start, today), as_dict=True)[0]
+
+    # 3- Sales Invoice this year
+    stats["sales_year"] = frappe.db.sql("""
+        SELECT 
+            COALESCE(SUM(grand_total), 0) as total_amount,
+            COUNT(name) as total_count
+        FROM `tabSales Invoice`
+        WHERE posting_date >= %s AND posting_date <= %s AND docstatus = 1
+    """, (year_start, today), as_dict=True)[0]
+
+    # 4- Payment Entries today grouped by Mode of Payment
+    stats["payments_today"] = frappe.db.sql("""
+        SELECT 
+            mode_of_payment,
+            COALESCE(SUM(paid_amount), 0) as total_amount,
+            COUNT(name) as total_count
+        FROM `tabPayment Entry`
+        WHERE posting_date = %s AND docstatus = 1
+        GROUP BY mode_of_payment
+    """, today, as_dict=True)
+
+    # 5- Overdue / Unpaid / Partly Paid invoices
+    stats["invoice_status"] = frappe.db.sql("""
+        SELECT 
+            status,
+            COUNT(name) as total_count,
+            COALESCE(SUM(outstanding_amount), 0) as total_amount
+        FROM `tabSales Invoice`
+        WHERE status IN ('Overdue','Unpaid','Partly Paid') AND docstatus = 1
+        GROUP BY status
+    """, as_dict=True)
+
+    # total overdue amount
+    stats["total_overdue"] = frappe.db.sql("""
+        SELECT COALESCE(SUM(outstanding_amount), 0) as total_amount
+        FROM `tabSales Invoice`
+        WHERE status IN ('Overdue','Unpaid','Partly Paid') AND docstatus = 1
+    """, as_dict=True)[0]
+
+    # 6- Sales Invoice Returns today
+    stats["returns_today"] = frappe.db.sql("""
+        SELECT 
+            COALESCE(SUM(grand_total), 0) as total_amount,
+            COUNT(name) as total_count
+        FROM `tabSales Invoice`
+        WHERE posting_date = %s AND is_return = 1 AND docstatus = 1
+    """, today, as_dict=True)[0]
+
+    # 7- Top 5 items sold today
+    stats["top_items_today"] = frappe.db.sql("""
+        SELECT 
+            sii.item_code,
+            sii.item_name,
+            COALESCE(SUM(sii.qty), 0) as total_qty,
+            COALESCE(SUM(sii.amount), 0) as total_income
+        FROM `tabSales Invoice Item` sii
+        JOIN `tabSales Invoice` si ON si.name = sii.parent
+        WHERE si.posting_date = %s AND si.docstatus = 1
+        GROUP BY sii.item_code, sii.item_name
+        ORDER BY total_income DESC
+        LIMIT 5
+    """, today, as_dict=True)
+
+    return stats
