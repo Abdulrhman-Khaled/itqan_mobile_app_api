@@ -901,6 +901,9 @@ def get_sales_statistics():
 
     stats = {}
 
+    default_currency = frappe.db.get_single_value("Global Defaults", "default_currency")
+    stats["currency"] = default_currency or ""
+
     # 1- Sales Invoice today (amount + count)
     stats["sales_today"] = frappe.db.sql("""
         SELECT 
