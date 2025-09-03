@@ -648,14 +648,14 @@ def get_items_details_list(filters=None):
 
             # Get first tax for the item (if exists)
             item_tax = frappe.db.sql("""
-                SELECT tax_type, tax_rate 
+                SELECT item_tax_template, tax_rate 
                 FROM `tabItem Tax` 
                 WHERE parent=%s 
                 ORDER BY idx ASC 
                 LIMIT 1
             """, (item["name"],), as_dict=True)
 
-            tax_type = item_tax[0]["tax_type"] if item_tax else None
+            tax_template = item_tax[0]["item_tax_template"] if item_tax else None
             tax_rate = item_tax[0]["tax_rate"] if item_tax else 0
 
             result.append({
@@ -666,7 +666,7 @@ def get_items_details_list(filters=None):
                 "stock_uom": item["stock_uom"],
                 "standard_rate": rate,
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else [],
-                "tax_type": tax_type,
+                "item_tax_template": tax_template,
                 "tax_rate": tax_rate
             })
 
