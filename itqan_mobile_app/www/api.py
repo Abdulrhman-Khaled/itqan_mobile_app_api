@@ -722,11 +722,16 @@ def create_sales_invoice(data):
                 "selling": 1,
             }, "price_list_rate")
 
-            item_rows.append({
+            row = {
                 "item_code": item["item_code"],
                 "qty": item.get("qty", 1),
                 "rate": item_price
-            })
+            }
+
+            if item.get("item_tax_template"):
+                row["item_tax_template"] = item["item_tax_template"]
+
+            item_rows.append(row)
 
         invoice = frappe.get_doc({
             "doctype": "Sales Invoice",
