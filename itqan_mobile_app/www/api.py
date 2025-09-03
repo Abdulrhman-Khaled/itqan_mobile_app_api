@@ -628,6 +628,7 @@ def get_items_details_list(filters=None):
 
         result = []
         for item in items:
+            # Get latest selling price
             item_price = frappe.db.sql("""
                 SELECT price_list_rate 
                 FROM `tabItem Price` 
@@ -638,11 +639,24 @@ def get_items_details_list(filters=None):
 
             rate = item_price[0]["price_list_rate"] if item_price else 0
 
+            # Get barcodes
             barcodes = frappe.get_all(
                 "Item Barcode", 
                 filters={"parent": item["name"]}, 
                 fields=["barcode"]
             )
+
+            # Get first tax for the item (if exists)
+            item_tax = frappe.db.sql("""
+                SELECT tax_type, tax_rate 
+                FROM `tabItem Tax` 
+                WHERE parent=%s 
+                ORDER BY idx ASC 
+                LIMIT 1
+            """, (item["name"],), as_dict=True)
+
+            tax_type = item_tax[0]["tax_type"] if item_tax else None
+            tax_rate = item_tax[0]["tax_rate"] if item_tax else 0
 
             result.append({
                 "name": item["name"],
@@ -651,7 +665,9 @@ def get_items_details_list(filters=None):
                 "image": item["image"],
                 "stock_uom": item["stock_uom"],
                 "standard_rate": rate,
-                "barcodes": [b["barcode"] for b in barcodes] if barcodes else []
+                "barcodes": [b["barcode"] for b in barcodes] if barcodes else [],
+                "tax_type": tax_type,
+                "tax_rate": tax_rate
             })
 
         return {
@@ -665,6 +681,7 @@ def get_items_details_list(filters=None):
             "status": "error",
             "message": str(e)
         }
+
 
 @frappe.whitelist()
 def create_sales_invoice(data):
