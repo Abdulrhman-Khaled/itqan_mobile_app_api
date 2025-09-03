@@ -646,17 +646,34 @@ def get_items_details_list(filters=None):
                 fields=["barcode"]
             )
 
-            # Get first tax for the item (if exists)
+            # Get first Item Tax Template for the item
             item_tax = frappe.db.sql("""
-                SELECT item_tax_template, tax_rate 
-                FROM `tabItem Tax` 
-                WHERE parent=%s 
-                ORDER BY idx ASC 
+                SELECT item_tax_template
+                FROM `tabItem Tax`
+                WHERE parent=%s
+                ORDER BY idx ASC
                 LIMIT 1
             """, (item["name"],), as_dict=True)
 
-            tax_template = item_tax[0]["item_tax_template"] if item_tax else None
-            tax_rate = item_tax[0]["tax_rate"] if item_tax else 0
+            tax_template = None
+            tax_rate = 0
+            tax_account = None
+
+            if item_tax:
+                tax_template = item_tax[0]["item_tax_template"]
+
+                # Fetch first tax rate from the template details
+                tax_detail = frappe.db.sql("""
+                    SELECT tax_type, tax_rate
+                    FROM `tabItem Tax Template Detail`
+                    WHERE parent=%s
+                    ORDER BY idx ASC
+                    LIMIT 1
+                """, (tax_template,), as_dict=True)
+
+                if tax_detail:
+                    tax_account = tax_detail[0]["tax_type"]
+                    tax_rate = tax_detail[0]["tax_rate"]
 
             result.append({
                 "name": item["name"],
@@ -667,6 +684,7 @@ def get_items_details_list(filters=None):
                 "standard_rate": rate,
                 "barcodes": [b["barcode"] for b in barcodes] if barcodes else [],
                 "item_tax_template": tax_template,
+                "tax_account": tax_account,
                 "tax_rate": tax_rate
             })
 
@@ -681,7 +699,6 @@ def get_items_details_list(filters=None):
             "status": "error",
             "message": str(e)
         }
-
 
 @frappe.whitelist()
 def create_sales_invoice(data):
