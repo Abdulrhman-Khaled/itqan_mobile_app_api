@@ -752,16 +752,18 @@ def create_sales_invoice(data):
             # case 2: no template in request → fallback to "0% template"
             else:
                 zero_tax_template = frappe.db.sql("""
-                    SELECT parent
-                    FROM `tabItem Tax Template Detail`
-                    WHERE tax_rate = 0
-                    LIMIT 1
+                SELECT `tabItem Tax Template`.name
+                FROM `tabItem Tax Template`
+                JOIN `tabItem Tax Template Detail`
+                    ON `tabItem Tax Template Detail`.parent = `tabItem Tax Template`.name
+                WHERE `tabItem Tax Template Detail`.tax_rate = 0
+                LIMIT 1
                 """, as_dict=True)
 
+
                 if zero_tax_template:
-                    row["item_tax_template"] = zero_tax_template[0].parent
+                    row["item_tax_template"] = zero_tax_template[0].name
                 else:
-                    # if no 0% template exists, just leave empty
                     row["item_tax_template"] = ""
 
             item_rows.append(row)
