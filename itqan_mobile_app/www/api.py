@@ -805,7 +805,7 @@ def create_sales_invoice(data):
                 })
 
 
-        invoice.run_method("calculate_taxes_and_totals")
+        #invoice.run_method("calculate_taxes_and_totals")
 
         invoice.insert(ignore_permissions=True)
 
