@@ -732,19 +732,11 @@ def create_sales_invoice(data):
 
             if item.get("item_tax_template"):
                 row["item_tax_template"] = item["item_tax_template"]
-            else:
-                row["item_tax_template"] = ""
-                row["item_tax_rate"] = {"No Tax": 0.0}
-
-            item_rows.append(row)
-
-            if item.get("item_tax_template"):
                 tax_details = frappe.db.sql("""
                     SELECT tax_type, tax_rate
                     FROM `tabItem Tax Template Detail`
                     WHERE parent=%s
                 """, (item["item_tax_template"],), as_dict=True)
-
                 for td in tax_details:
                     taxes_rows.append({
                         "charge_type": "On Net Total",
@@ -753,6 +745,18 @@ def create_sales_invoice(data):
                         "description": f"Tax from {item['item_code']}",
                         "cost_center": data.get("cost_center")
                     })
+            else:
+                row["item_tax_template"] = ""
+                row["item_tax_rate"] = {}
+                taxes_rows.append({
+                    "charge_type": "On Net Total",
+                    "account_head": frappe.db.get_value("Account", {"is_group": 0, "root_type": "Liability"}, "name"),
+                    "rate": 0,
+                    "description": f"No tax for {item['item_code']}",
+                    "cost_center": data.get("cost_center")
+                })
+
+            item_rows.append(row)
 
         invoice = frappe.get_doc({
             "doctype": "Sales Invoice",
