@@ -745,16 +745,14 @@ def create_sales_invoice(data):
                         "description": f"Tax from {item['item_code']}",
                         "cost_center": data.get("cost_center")
                     })
-            else:
-                row["item_tax_template"] = ""
-                row["item_tax_rate"] = {}
-                taxes_rows.append({
-                    "charge_type": "On Net Total",
-                    "account_head": frappe.db.get_value("Account", {"is_group": 0, "root_type": "Liability"}, "name"),
-                    "rate": 0,
-                    "description": f"No tax for {item['item_code']}",
-                    "cost_center": data.get("cost_center")
-                })
+            # else:              
+            #     taxes_rows.append({
+            #         "charge_type": "On Net Total",
+            #         "account_head": frappe.db.get_value("Account", {"is_group": 0, "root_type": "Liability"}, "name"),
+            #         "rate": 0,
+            #         "description": f"No tax for {item['item_code']}",
+            #         "cost_center": data.get("cost_center")
+            #     })
 
             item_rows.append(row)
 
