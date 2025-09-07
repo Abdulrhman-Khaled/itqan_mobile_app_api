@@ -732,6 +732,8 @@ def create_sales_invoice(data):
 
             if item.get("item_tax_template"):
                 row["item_tax_template"] = item["item_tax_template"]
+            else:
+                row["item_tax_template"] = ""
 
             item_rows.append(row)
 
