@@ -773,6 +773,8 @@ def create_sales_invoice(data):
                         "charge_type":  f"Tax from {item['item_code']}",
                         "account_head": td["tax_type"],
                         "rate": td["tax_rate"],
+                        "description": f"Tax from {item['item_code']}",
+                        "cost_center": data.get("cost_center")
                     })
 
             # Case 3: no template
