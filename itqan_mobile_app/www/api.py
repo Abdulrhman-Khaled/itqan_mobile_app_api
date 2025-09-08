@@ -724,12 +724,13 @@ def create_sales_invoice(data):
                 "selling": 1,
             }, "price_list_rate")
 
-            if item.get("item_tax_template"):
+            item_template = item.get("item_tax_template")
+
+            if item_template == '0':
                 row = {
                     "item_code": item["item_code"],
                     "qty": item.get("qty", 1),
                     "rate": item_price,
-                    "item_tax_template" : item.get("item_tax_template")
                 }
             
             else:
@@ -737,6 +738,8 @@ def create_sales_invoice(data):
                     "item_code": item["item_code"],
                     "qty": item.get("qty", 1),
                     "rate": item_price,
+                    "item_tax_template" : item.get("item_tax_template")
+
                 }
 
             # if item.get("item_tax_template"):
