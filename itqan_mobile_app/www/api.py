@@ -770,7 +770,7 @@ def create_sales_invoice(data):
                     """, (item["item_tax_template"],), as_dict=True)
                 for td in tax_details:
                     taxes_rows.append({
-                        "charge_type":  f"Tax from {item['item_code']}",
+                        "charge_type":  "On Net Total",
                         "account_head": td["tax_type"],
                         "rate": td["tax_rate"],
                         "description": f"Tax from {item['item_code']}",
