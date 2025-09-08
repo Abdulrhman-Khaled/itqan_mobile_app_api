@@ -792,6 +792,7 @@ def create_sales_invoice(data):
                     "rate": 0,  # will be handled by item_wise_tax_detail
                     "item_wise_tax_detail": frappe.as_json(details),
                     "cost_center": data.get("cost_center"),
+                    "description": f"Tax for {account_head}",
                 },
             )
    
