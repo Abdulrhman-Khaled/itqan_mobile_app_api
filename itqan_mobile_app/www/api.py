@@ -26,6 +26,76 @@ def get_user(user):
     doc = frappe.get_doc("User", user)
     return {"user": doc, "type": "user"}
 
+def get_user_profile(user=None):
+    if not user:
+        user = frappe.session.user
+
+    if user == "Guest":
+        frappe.throw("Not permitted")
+
+    user_doc = frappe.get_doc("User", user)
+    return {
+        "email": user_doc.email,
+        "first_name": user_doc.first_name,
+        "last_name": user_doc.last_name,
+        "phone": user_doc.phone,
+        "time_zone": user_doc.time_zone,
+        "profile_image": user_doc.user_image
+    }
+
+def update_user_profile():
+    try:
+        user = frappe.session.user
+        doc = frappe.get_doc("User", user)
+
+        # Handle both JSON and form-data
+        data = frappe.form_dict if frappe.form_dict else {}
+
+        # Update text fields
+        if data.get("first_name"):
+            doc.first_name = data.get("first_name")
+
+        if data.get("last_name"):
+            doc.last_name = data.get("last_name")
+
+        if data.get("phone"):
+            doc.phone = data.get("phone")
+
+        if data.get("time_zone"):
+            doc.time_zone = data.get("time_zone")
+
+        if data.get("email") and data.get("email") != doc.email:
+            # Make sure email not already taken
+            if frappe.db.exists("User", data.get("email")):
+                return {"status": "error", "message": "Email already in use"}
+            doc.email = data.get("email")
+
+        # Handle profile image if file uploaded
+        if "file" in frappe.request.files:
+            file = frappe.request.files["file"]
+            file_doc = save_file(file.filename, file.read(), "User", user, is_private=0)
+            doc.user_image = file_doc.file_url
+
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "status": "success",
+            "message": "Profile updated successfully",
+            "user": {
+                "first_name": doc.first_name,
+                "last_name": doc.last_name,
+                "email": doc.email,
+                "phone": doc.phone,
+                "time_zone": doc.time_zone,
+                "profile_image": doc.user_image,
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update User Profile Error")
+        return {"status": "error", "message": str(e)}
+
 @frappe.whitelist()
 def get_items_list(filters=None):
     return frappe.db.get_list("Item", filters=filters, fields="name")
@@ -733,7 +803,6 @@ def create_sales_invoice(data):
             if item.get("item_tax_template"):
                 row["item_tax_template"] = item["item_tax_template"]
 
-                # fetch template details
                 tax_details = frappe.db.sql(
                     """
                     SELECT tax_type, tax_rate
@@ -750,19 +819,8 @@ def create_sales_invoice(data):
                     tax_map[td.tax_type][item["item_code"]] = [td.tax_rate, td.tax_rate]
 
             else:
-                # force 0% if no template sent
                 row["item_tax_template"] = ""
                 row["item_tax_rate"] = frappe.as_json({})
-                # you may want to use a default account for zero tax
-                # default_zero_account = frappe.db.get_value(
-                #     "Account",
-                #     {"is_group": 0, "root_type": "Liability"},
-                #     "name",
-                # )
-                # if default_zero_account:
-                #     if default_zero_account not in tax_map:
-                #         tax_map[default_zero_account] = {}
-                #     tax_map[default_zero_account][item["item_code"]] = [0.0, 0.0]
 
             item_rows.append(row)
 
@@ -790,7 +848,7 @@ def create_sales_invoice(data):
                 {
                     "charge_type": "On Net Total",
                     "account_head": account_head,
-                    "rate": 0,  # will be handled by item_wise_tax_detail
+                    "rate": 0,
                     "item_wise_tax_detail": frappe.as_json(details),
                     "cost_center": data.get("cost_center"),
                     "description": f"Tax for {account_head}",
