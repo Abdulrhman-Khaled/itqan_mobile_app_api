@@ -758,7 +758,7 @@ def create_sales_invoice(data):
                 row["item_tax_template"] = template_name
 
                 # optional: also update item master to point to this template
-                frappe.db.set_value("Item", item["item_code"], "item_tax_template", template_name)
+                # frappe.db.set_value("Item", item["item_code"], "item_tax_template", template_name)
 
             # Case 2: user provided real template name
             elif item_template:
