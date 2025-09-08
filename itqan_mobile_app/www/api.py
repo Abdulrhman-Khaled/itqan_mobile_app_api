@@ -716,7 +716,7 @@ def create_sales_invoice(data):
         due_date = data.get("due_date") or posting_date
         
         item_rows = []
-        taxes_rows = []
+        tax_map = {}
 
         for item in items:
             item_price = item.get("rate") or frappe.db.get_value("Item Price", {
@@ -724,36 +724,44 @@ def create_sales_invoice(data):
                 "selling": 1,
             }, "price_list_rate")
 
-            item_template = item.get("item_tax_template")
-
-            if item_template == '0':
-                row = {
+            row = {
                     "item_code": item["item_code"],
                     "qty": item.get("qty", 1),
-                    "rate": item_price,
-                }
-            
-            else:
-                row = {
-                    "item_code": item["item_code"],
-                    "qty": item.get("qty", 1),
-                    "rate": item_price,
-                    "item_tax_template" : item_template
+                    "rate": item_price
                 }
 
-                tax_details = frappe.db.sql("""
-                        SELECT tax_type, tax_rate
-                        FROM `tabItem Tax Template Detail`
-                        WHERE parent=%s
-                    """, (item_template), as_dict=True)
+            if item.get("item_tax_template"):
+                row["item_tax_template"] = item["item_tax_template"]
+
+                # fetch template details
+                tax_details = frappe.db.sql(
+                    """
+                    SELECT tax_type, tax_rate
+                    FROM `tabItem Tax Template Detail`
+                    WHERE parent=%s
+                """,
+                    (item["item_tax_template"],),
+                    as_dict=True,
+                )
+
                 for td in tax_details:
-                    taxes_rows.append({
-                        "charge_type":  "On Net Total",
-                        "account_head": td["tax_type"],
-                        "rate": td["tax_rate"],
-                        "description": f"Tax from {item['item_code']}",
-                        "cost_center": data.get("cost_center")
-                    })
+                    if td.tax_type not in tax_map:
+                        tax_map[td.tax_type] = {}
+                    tax_map[td.tax_type][item["item_code"]] = [td.tax_rate, td.tax_rate]
+
+            else:
+                # force 0% if no template sent
+                row["item_tax_template"] = None
+                # you may want to use a default account for zero tax
+                default_zero_account = frappe.db.get_value(
+                    "Account",
+                    {"is_group": 0, "root_type": "Liability"},
+                    "name",
+                )
+                if default_zero_account:
+                    if default_zero_account not in tax_map:
+                        tax_map[default_zero_account] = {}
+                    tax_map[default_zero_account][item["item_code"]] = [0.0, 0.0]
 
             item_rows.append(row)
 
@@ -775,8 +783,17 @@ def create_sales_invoice(data):
             "set_warehouse": data.get("warehouse"),
         })
 
-        for tax in taxes_rows:
-            invoice.append("taxes", tax)
+        for account_head, details in tax_map.items():
+            invoice.append(
+                "taxes",
+                {
+                    "charge_type": "On Net Total",
+                    "account_head": account_head,
+                    "rate": 0,  # will be handled by item_wise_tax_detail
+                    "item_wise_tax_detail": frappe.as_json(details),
+                    "cost_center": data.get("cost_center"),
+                },
+            )
    
         if data.get("taxes_and_charges"):
             tax_template = frappe.get_doc("Sales Taxes and Charges Template", data["taxes_and_charges"])
@@ -793,7 +810,6 @@ def create_sales_invoice(data):
                 })
         
         invoice.run_method("calculate_taxes_and_totals")
-
         invoice.insert(ignore_permissions=True)
 
         return {
