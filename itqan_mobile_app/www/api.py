@@ -763,6 +763,17 @@ def create_sales_invoice(data):
             # Case 2: user provided real template name
             elif item_template:
                 row["item_tax_template"] = item_template
+                tax_details = frappe.db.sql("""
+                        SELECT tax_type, tax_rate
+                        FROM `tabItem Tax Template Detail`
+                        WHERE parent=%s
+                    """, (item["item_tax_template"],), as_dict=True)
+                for td in tax_details:
+                    taxes_rows.append({
+                        "charge_type":  f"Tax from {item['item_code']}",
+                        "account_head": td["tax_type"],
+                        "rate": td["tax_rate"],
+                    })
 
             # Case 3: no template
             else:
