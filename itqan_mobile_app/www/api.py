@@ -751,17 +751,18 @@ def create_sales_invoice(data):
 
             else:
                 # force 0% if no template sent
-                row["item_tax_template"] = None
+                row["item_tax_template"] = ""
+                row["item_tax_rate"] = frappe.as_json({})
                 # you may want to use a default account for zero tax
-                default_zero_account = frappe.db.get_value(
-                    "Account",
-                    {"is_group": 0, "root_type": "Liability"},
-                    "name",
-                )
-                if default_zero_account:
-                    if default_zero_account not in tax_map:
-                        tax_map[default_zero_account] = {}
-                    tax_map[default_zero_account][item["item_code"]] = [0.0, 0.0]
+                # default_zero_account = frappe.db.get_value(
+                #     "Account",
+                #     {"is_group": 0, "root_type": "Liability"},
+                #     "name",
+                # )
+                # if default_zero_account:
+                #     if default_zero_account not in tax_map:
+                #         tax_map[default_zero_account] = {}
+                #     tax_map[default_zero_account][item["item_code"]] = [0.0, 0.0]
 
             item_rows.append(row)
 
