@@ -740,7 +740,7 @@ def create_sales_invoice(data):
                     taxes_rows.append({
                         "charge_type":  "On Net Total",
                         "account_head": td["tax_type"],
-                        "rate": td["tax_rate"],
+                        "rate": 0,
                         "description": f"Tax from {item['item_code']}",
                         "cost_center": data.get("cost_center")
                     })
@@ -782,10 +782,6 @@ def create_sales_invoice(data):
                     "row_id": tax.row_id
                 })
         
-        for inv_item in invoice.items:
-            if not inv_item.item_tax_template:
-                inv_item.item_tax_rate = {}
-
         invoice.run_method("calculate_taxes_and_totals")
 
         invoice.insert(ignore_permissions=True)
