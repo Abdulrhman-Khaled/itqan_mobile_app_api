@@ -730,39 +730,7 @@ def create_sales_invoice(data):
                 "rate": item_price,
             }
 
-            item_template = item.get("item_tax_template")
-
-            # Case 1: special "0" → create/reuse zero-tax template
-            if item_template == "0":
-                company = data.get("company") or frappe.defaults.get_user_default("Company")
-                template_name = f"0 - {company}"
-
-                if not frappe.db.exists("Item Tax Template", template_name):
-                    if not item.get("tax_account"):
-                        frappe.throw(f"tax_account is required for item {item['item_code']} to create zero tax template")
-
-                    zero_template = frappe.get_doc({
-                        "doctype": "Item Tax Template",
-                        "title": "0",
-                        "name": template_name,
-                        "company": company,
-                        "taxes": [
-                            {
-                                "tax_type": item["tax_account"],
-                                "tax_rate": 0
-                            }
-                        ]
-                    })
-                    zero_template.insert(ignore_permissions=True)
-
-                row["item_tax_template"] = template_name
-
-                # optional: also update item master to point to this template
-                # frappe.db.set_value("Item", item["item_code"], "item_tax_template", template_name)
-
-            # Case 2: user provided real template name
-            elif item_template:
-                row["item_tax_template"] = item_template
+            if item.get("item_tax_template"):
                 tax_details = frappe.db.sql("""
                         SELECT tax_type, tax_rate
                         FROM `tabItem Tax Template Detail`
@@ -777,14 +745,7 @@ def create_sales_invoice(data):
                         "cost_center": data.get("cost_center")
                     })
 
-            # Case 3: no template
-            else:
-                row["item_tax_template"] = ""
-
             item_rows.append(row)
-
-
-
 
         invoice = frappe.get_doc({
             "doctype": "Sales Invoice",
@@ -820,7 +781,10 @@ def create_sales_invoice(data):
                     "included_in_print_rate": tax.included_in_print_rate,
                     "row_id": tax.row_id
                 })
-
+        
+        for inv_item in invoice.items:
+            if not inv_item.item_tax_template:
+                inv_item.item_tax_rate = {}
 
         invoice.run_method("calculate_taxes_and_totals")
 
