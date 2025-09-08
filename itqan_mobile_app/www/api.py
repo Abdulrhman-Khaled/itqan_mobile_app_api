@@ -730,43 +730,45 @@ def create_sales_invoice(data):
                 "rate": item_price,
             }
 
-            # case 1: user provided template → use it
-            if item.get("item_tax_template"):
-                row["item_tax_template"] = item["item_tax_template"]
+            item_template = item.get("item_tax_template")
 
-                tax_details = frappe.db.sql("""
-                    SELECT tax_type, tax_rate
-                    FROM `tabItem Tax Template Detail`
-                    WHERE parent=%s
-                """, (item["item_tax_template"],), as_dict=True)
+            # Case 1: "0" means create or reuse zero-tax template
+            if item_template == "0":
+                company = data.get("company") or frappe.defaults.get_user_default("Company")
+                template_name = f"0 - {company}"
 
-                for td in tax_details:
-                    taxes_rows.append({
-                        "charge_type": "On Net Total",
-                        "account_head": td["tax_type"],
-                        "rate": td["tax_rate"],
-                        "description": f"Tax from {item['item_code']}",
-                        "cost_center": data.get("cost_center")
+                # check if template already exists
+                if not frappe.db.exists("Item Tax Template", template_name):
+                    zero_template = frappe.get_doc({
+                        "doctype": "Item Tax Template",
+                        "title": "0",
+                        "name": template_name,
+                        "company": company,
+                        "taxes": [
+                            {
+                                "tax_type": frappe.db.get_value("Account", {"is_group": 0, "root_type": "Liability"}, "name"),
+                                "tax_rate": 0
+                            }
+                        ]
                     })
+                    zero_template.insert(ignore_permissions=True)
 
-            # case 2: no template in request → fallback to "0% template"
+                # assign template to row
+                row["item_tax_template"] = template_name
+
+                # also update item master’s taxes
+                frappe.db.set_value("Item", item["item_code"], "item_tax_template", template_name)
+
+            # Case 2: other template explicitly sent → just apply
+            elif item_template:
+                row["item_tax_template"] = item_template
+
+            # Case 3: no template → leave empty (or fallback if you want)
             else:
-                zero_tax_template = frappe.db.sql("""
-                SELECT `tabItem Tax Template`.name
-                FROM `tabItem Tax Template`
-                JOIN `tabItem Tax Template Detail`
-                    ON `tabItem Tax Template Detail`.parent = `tabItem Tax Template`.name
-                WHERE `tabItem Tax Template Detail`.tax_rate = 0
-                LIMIT 1
-                """, as_dict=True)
-
-
-                if zero_tax_template:
-                    row["item_tax_template"] = zero_tax_template[0].name
-                else:
-                    row["item_tax_template"] = ""
+                row["item_tax_template"] = ""
 
             item_rows.append(row)
+
 
 
         invoice = frappe.get_doc({
@@ -805,7 +807,7 @@ def create_sales_invoice(data):
                 })
 
 
-        #invoice.run_method("calculate_taxes_and_totals")
+        invoice.run_method("calculate_taxes_and_totals")
 
         invoice.insert(ignore_permissions=True)
 
