@@ -26,6 +26,7 @@ def get_user(user):
     doc = frappe.get_doc("User", user)
     return {"user": doc, "type": "user"}
 
+@frappe.whitelist()
 def get_user_profile(user=None):
     if not user:
         user = frappe.session.user
@@ -43,6 +44,7 @@ def get_user_profile(user=None):
         "profile_image": user_doc.user_image
     }
 
+@frappe.whitelist()
 def update_user_profile():
     try:
         user = frappe.session.user
